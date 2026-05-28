@@ -7,7 +7,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../models/gps_data.dart';
 import '../services/esp32_service.dart';
+import '../services/database_service.dart';
+import '../services/trip_recorder.dart';
 import 'settings_screen.dart';
+import 'trip_history_screen.dart';
+import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final Esp32Service _esp32 = Esp32Service();
   final MapController _mapController = MapController();
+  final TripRecorder _recorder = TripRecorder();
 
   GpsData? _currentGps;
   DeviceStatus? _deviceStatus;
@@ -90,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _gpsSub?.cancel();
     _statusSub?.cancel();
     _statusTimer?.cancel();
+    _recorder.dispose();
     _esp32.dispose();
     super.dispose();
   }
@@ -544,6 +550,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               );
             }
           },
+        ),
+        const SizedBox(height: 10),
+
+        // Record trip
+        _mapFab(
+          icon: _recorder.isRecording ? Icons.stop : Icons.fiber_manual_record,
+          color: _recorder.isRecording
+              ? Colors.red
+              : const Color(0xFF00FF9C),
+          onTap: () {
+            if (_recorder.isRecording) {
+              _recorder.stopRecording();
+            } else {
+              _recorder.startRecording(_esp32.gpsStream);
+            }
+          },
+        ),
+        const SizedBox(height: 10),
+
+        // History
+        _mapFab(
+          icon: Icons.history,
+          color: Colors.white54,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const TripHistoryScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Stats
+        _mapFab(
+          icon: Icons.bar_chart,
+          color: Colors.white54,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const StatsScreen()),
+          ),
         ),
         const SizedBox(height: 10),
 

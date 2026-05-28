@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/esp32_service.dart';
+import '../services/database_service.dart';
+import '../services/export_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Esp32Service esp32Service;
@@ -12,6 +14,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final DatabaseService _db = DatabaseService();
+  final ExportService _export = ExportService();
   late TextEditingController _ipController;
   bool _testing = false;
   bool? _testResult;
@@ -46,6 +50,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _save() async {
     await widget.esp32Service.setDeviceIp(_ipController.text.trim());
     if (mounted) Navigator.pop(context);
+  }
+
+  void _confirmDeleteAll() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1B2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete All Data',
+          style: GoogleFonts.orbitron(
+              color: Colors.white, fontSize: 14, letterSpacing: 1),
+        ),
+        content: Text(
+          'This will permanently delete all saved trips and GPS points from the database.',
+          style: GoogleFonts.spaceGrotesk(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: GoogleFonts.spaceGrotesk(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _db.deleteAllTrips();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('All data deleted'),
+                  backgroundColor: const Color(0xFF0D1B2A),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Text('Delete',
+                style: GoogleFonts.spaceGrotesk(
+                    color: Colors.red, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -217,6 +263,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Baud Rate: 9600 | Update Rate: 1Hz\nPower: 3.3V (DO NOT use 5V!)',
                     style: GoogleFonts.spaceGrotesk(
                         color: Colors.white38, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+            _sectionTitle('DATA MANAGEMENT'),
+            const SizedBox(height: 12),
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Export all trips to CSV',
+                    style: GoogleFonts.spaceGrotesk(
+                        color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Share GPS trip data with your classmates',
+                    style: GoogleFonts.spaceGrotesk(
+                        color: Colors.white38, fontSize: 11),
+                  ),
+                  const SizedBox(height: 12),
+                  _btn(
+                    label: 'EXPORT ALL TRIPS',
+                    onTap: () => _export.exportAllTrips(context),
+                    outline: true,
+                  ),
+                  const SizedBox(height: 10),
+                  _btn(
+                    label: 'DELETE ALL DATA',
+                    onTap: _confirmDeleteAll,
+                    outline: true,
                   ),
                 ],
               ),
