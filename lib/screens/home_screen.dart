@@ -27,7 +27,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  final Esp32Service _esp32 = Esp32Service();
+  final Esp32Service _esp32 = Esp32Service(); // singleton
   final MapController _mapController = MapController();
   final TripRecorder _recorder = TripRecorder();
 
@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   StreamSubscription? _gpsSub;
   StreamSubscription? _statusSub;
+  StreamSubscription? _connectionSub;
   Timer? _statusTimer;
 
   late AnimationController _pulseController;
@@ -56,7 +57,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _initService() async {
     await _esp32.init();
     _subscribeStreams();
+    _subscribeConnection();
     _connect();
+  }
+
+  void _subscribeConnection() {
+    _connectionSub = _esp32.connectionStream?.listen((quality) {
+      if (!mounted) return;
+      if (quality == ConnectionQuality.disconnected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Connection lost. Reconnecting...'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else if (quality == ConnectionQuality.excellent ||
+          quality == ConnectionQuality.good) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Reconnected successfully'),
+            backgroundColor: const Color(0xFF00FF9C),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
   }
 
   void _subscribeStreams() {
@@ -103,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _connect() async {
     setState(() => _isConnecting = true);
     await _esp32.connectWebSocket();
-    _esp32.startHttpPolling(intervalSeconds: 2);
+    _esp32.startHttpPolling();
 
     _statusTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       final status = await _esp32.getDeviceStatus();
@@ -118,6 +146,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pulseController.dispose();
     _gpsSub?.cancel();
     _statusSub?.cancel();
+    _connectionSub?.cancel();
     _statusTimer?.cancel();
     _recorder.dispose();
     _esp32.dispose();

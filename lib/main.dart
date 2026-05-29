@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/trip_history_screen.dart';
@@ -9,7 +10,8 @@ import 'screens/stats_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock to portrait + landscape
+  await _requestPermissions();
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
@@ -24,6 +26,13 @@ void main() async {
   );
 
   runApp(const ESP32GPSApp());
+}
+
+Future<void> _requestPermissions() async {
+  final status = await Permission.locationWhenInUse.request();
+  if (status.isGranted) {
+    await Permission.location.request();
+  }
 }
 
 class ESP32GPSApp extends StatelessWidget {

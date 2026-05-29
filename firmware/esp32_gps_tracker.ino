@@ -171,13 +171,16 @@ void checkWiFi() {
 // ─── Watchdog ─────────────────────────────────────────────────────────────────
 void checkWatchdog() {
   static unsigned long lastReset = millis();
+  static bool hadValidFix = false;
   unsigned long now = millis();
 
   if (gps.location.isValid()) {
     lastGpsFix = now;
+    hadValidFix = true;
+    lastReset = now;
   }
 
-  bool gpsStuck = (now - lastGpsFix > GPS_TIMEOUT_MS && gps.location.isValid());
+  bool gpsStuck = hadValidFix && (now - lastGpsFix > GPS_TIMEOUT_MS);
   bool totalStuck = (now - lastReset > WDT_TIMEOUT);
 
   if (gpsStuck) {
@@ -282,6 +285,8 @@ void handleNotFound() {
 }
 
 // ─── WebSocket Events ─────────────────────────────────────────────────────────
+#define MAX_WS_PAYLOAD 256
+
 void onWsEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {
   if (type == WStype_CONNECTED) {
     Serial.printf("[WS] Client #%u connected\n", num);
@@ -290,12 +295,18 @@ void onWsEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {
   } else if (type == WStype_DISCONNECTED) {
     Serial.printf("[WS] Client #%u disconnected\n", num);
   } else if (type == WStype_TEXT) {
+    if (length > MAX_WS_PAYLOAD) {
+      wsServer.sendTXT(num, "{\"type\":\"error\",\"msg\":\"payload too large\"}");
+      return;
+    }
     String cmd = String((char*)payload);
     cmd.trim();
     if (cmd == "ping") {
       wsServer.sendTXT(num, "{\"type\":\"pong\"}");
     } else if (cmd == "status") {
       wsServer.sendTXT(num, buildStatusJson());
+    } else {
+      wsServer.sendTXT(num, "{\"type\":\"error\",\"msg\":\"unknown command\"}");
     }
   }
 }
@@ -338,6 +349,8 @@ void loop() {
   checkWiFi();
   checkWatchdog();
 
+  unsigned long now = millis();
+
   // Periodic health log
   if (now - lastHealthPing >= HEALTH_CHECK_INTERVAL) {
     lastHealthPing = now;
@@ -347,7 +360,6 @@ void loop() {
       wsServer.connectedClientsCount());
   }
 
-  unsigned long now = millis();
   if (now - lastBroadcast >= BROADCAST_INTERVAL) {
     lastBroadcast = now;
     String gpsMsg    = buildGpsJson();

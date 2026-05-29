@@ -26,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _ipController =
         TextEditingController(text: widget.esp32Service.deviceIp);
+    _pollInterval = widget.esp32Service.pollInterval;
   }
 
   @override
@@ -74,16 +75,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: GoogleFonts.spaceGrotesk(color: Colors.white54)),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              _db.deleteAllTrips();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('All data deleted'),
-                  backgroundColor: const Color(0xFF0D1B2A),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              try {
+                await _db.deleteAllTrips();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('All data deleted'),
+                      backgroundColor: const Color(0xFF0D1B2A),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Delete failed: $e'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
             },
             child: Text('Delete',
                 style: GoogleFonts.spaceGrotesk(
@@ -232,7 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: GoogleFonts.spaceGrotesk(
                         color: Colors.white70, fontSize: 13),
                   ),
-                  Slider(
+                    Slider(
                     value: _pollInterval.toDouble(),
                     min: 1,
                     max: 10,
@@ -240,8 +255,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     activeColor: const Color(0xFF00E5FF),
                     inactiveColor: Colors.white10,
                     label: '${_pollInterval}s',
-                    onChanged: (v) =>
-                        setState(() => _pollInterval = v.round()),
+                    onChanged: (v) {
+                      setState(() => _pollInterval = v.round());
+                      widget.esp32Service.setPollInterval(v.round());
+                    },
                   ),
                 ],
               ),

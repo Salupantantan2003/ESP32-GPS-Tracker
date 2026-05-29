@@ -8,13 +8,20 @@ import '../models/gps_data.dart';
 enum ConnectionQuality { excellent, good, fair, poor, disconnected }
 
 class Esp32Service {
+  static final Esp32Service _instance = Esp32Service._internal();
+  factory Esp32Service() => _instance;
+  Esp32Service._internal();
+
   static const String _ipKey = 'esp32_ip';
+  static const String _intervalKey = 'poll_interval';
   static const int _wsPort = 81;
   static const int _httpPort = 80;
   static const Duration _timeout = Duration(seconds: 5);
   static const int _maxReconnectDelay = 30; // seconds
+  static const int _maxReconnectAttempts = 10;
 
   String _deviceIp = '192.168.1.100';
+  int _pollInterval = 2;
   WebSocketChannel? _wsChannel;
   StreamController<GpsData>? _gpsStreamController;
   StreamController<DeviceStatus>? _statusStreamController;
@@ -48,12 +55,25 @@ class Esp32Service {
 
     final prefs = await SharedPreferences.getInstance();
     _deviceIp = prefs.getString(_ipKey) ?? '192.168.1.100';
+    _pollInterval = prefs.getInt(_intervalKey) ?? 2;
   }
 
   Future<void> setDeviceIp(String ip) async {
     _deviceIp = ip;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_ipKey, ip);
+  }
+
+  int get pollInterval => _pollInterval;
+
+  Future<void> setPollInterval(int seconds) async {
+    _pollInterval = seconds;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_intervalKey, seconds);
+    if (_pollTimer != null) {
+      stopHttpPolling();
+      startHttpPolling();
+    }
   }
 
   String get _httpBase => 'http://$_deviceIp:$_httpPort';
@@ -174,15 +194,20 @@ class Esp32Service {
   void _scheduleReconnect() {
     _reconnectTimer?.cancel();
     _reconnectAttempts++;
+    if (_reconnectAttempts > _maxReconnectAttempts) {
+      _isConnected = false;
+      _updateQuality();
+      return;
+    }
     final delay = (_reconnectAttempts * 2).clamp(1, _maxReconnectDelay);
     _reconnectTimer = Timer(Duration(seconds: delay), connectWebSocket);
   }
 
   /// Fallback: poll via HTTP every N seconds
-  void startHttpPolling({int intervalSeconds = 2}) {
+  void startHttpPolling({int? intervalSeconds}) {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(
-      Duration(seconds: intervalSeconds),
+      Duration(seconds: intervalSeconds ?? _pollInterval),
       (_) => _fetchGpsHttp(),
     );
   }

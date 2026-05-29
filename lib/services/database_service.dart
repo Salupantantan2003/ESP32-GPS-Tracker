@@ -172,7 +172,6 @@ class DatabaseService {
           await db.rawQuery('SELECT COALESCE(MAX(max_speed), 0) FROM trips'),
         ) ??
         0.0);
-    final todayStr = DateTime.now().millisecondsSinceEpoch.toString();
     final todayTrips =
         (Sqflite.firstIntValue(
           await db

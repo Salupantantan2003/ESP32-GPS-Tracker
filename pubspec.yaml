@@ -23,12 +23,7 @@ dependencies:
   # UI
   google_fonts: ^6.2.1
   flutter_animate: ^4.5.0
-  iconsax: ^0.0.8
   percent_indicator: ^4.2.3
-  
-  # Location
-  geolocator: ^11.0.0
-  geocoding: ^3.0.0
   
   # Storage
   shared_preferences: ^2.2.3

@@ -106,7 +106,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           child: _statCard(
                             Icons.map,
                             'Total Distance',
-                            '${(_stats['totalDistance'] as num).toStringAsFixed(2)} km',
+                            '${((_stats['totalDistance'] as num?) ?? 0).toStringAsFixed(2)} km',
                             const Color(0xFFFFD600),
                           ),
                         ),
@@ -115,7 +115,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           child: _statCard(
                             Icons.speed,
                             'Max Speed',
-                            '${(_stats['maxSpeed'] as num).toStringAsFixed(1)} km/h',
+                            '${((_stats['maxSpeed'] as num?) ?? 0).toStringAsFixed(1)} km/h',
                             const Color(0xFFFF6B6B),
                           ),
                         ),
