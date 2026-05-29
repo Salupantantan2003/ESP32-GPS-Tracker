@@ -20,11 +20,7 @@ class DatabaseService {
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'esp32_gps_tracker.db');
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createTables,
-    );
+    return await openDatabase(path, version: 1, onCreate: _createTables);
   }
 
   Future<void> _createTables(Database db, int version) async {
@@ -65,7 +61,7 @@ class DatabaseService {
     final db = await database;
     _activeTripId = await db.insert('trips', {
       'name': name ?? 'Trip ${DateTime.now().toString().substring(0, 16)}',
-      'start_time': DateTime.now().millisecondsSinceEpoch,
+      'start_time': DateTime.now().toUtc().millisecondsSinceEpoch,
     });
     return _activeTripId!;
   }
@@ -75,7 +71,7 @@ class DatabaseService {
     final db = await database;
     await db.update(
       'trips',
-      {'end_time': DateTime.now().millisecondsSinceEpoch},
+      {'end_time': DateTime.now().toUtc().millisecondsSinceEpoch},
       where: 'id = ?',
       whereArgs: [_activeTripId],
     );
@@ -105,8 +101,11 @@ class DatabaseService {
 
   Future<Map<String, dynamic>?> getTrip(int tripId) async {
     final db = await database;
-    final result =
-        await db.query('trips', where: 'id = ?', whereArgs: [tripId]);
+    final result = await db.query(
+      'trips',
+      where: 'id = ?',
+      whereArgs: [tripId],
+    );
     return result.isNotEmpty ? result.first : null;
   }
 
@@ -118,23 +117,28 @@ class DatabaseService {
       whereArgs: [tripId],
       orderBy: 'timestamp ASC',
     );
-    return result.map((row) => GpsData(
-      latitude: row['latitude'] as double,
-      longitude: row['longitude'] as double,
-      altitude: (row['altitude'] as num?)?.toDouble() ?? 0,
-      speed: (row['speed'] as num?)?.toDouble() ?? 0,
-      accuracy: (row['accuracy'] as num?)?.toDouble() ?? 0,
-      satellites: row['satellites'] as int? ?? 0,
-      timestamp:
-          DateTime.fromMillisecondsSinceEpoch(row['timestamp'] as int),
-      isValid: true,
-    )).toList();
+    return result
+        .map(
+          (row) => GpsData(
+            latitude: row['latitude'] as double,
+            longitude: row['longitude'] as double,
+            altitude: (row['altitude'] as num?)?.toDouble() ?? 0,
+            speed: (row['speed'] as num?)?.toDouble() ?? 0,
+            accuracy: (row['accuracy'] as num?)?.toDouble() ?? 0,
+            satellites: row['satellites'] as int? ?? 0,
+            timestamp: DateTime.fromMillisecondsSinceEpoch(
+              row['timestamp'] as int,
+              isUtc: true,
+            ).toLocal(),
+            isValid: true,
+          ),
+        )
+        .toList();
   }
 
   Future<void> deleteTrip(int tripId) async {
     final db = await database;
-    await db.delete('gps_points',
-        where: 'trip_id = ?', whereArgs: [tripId]);
+    await db.delete('gps_points', where: 'trip_id = ?', whereArgs: [tripId]);
     await db.delete('trips', where: 'id = ?', whereArgs: [tripId]);
   }
 
@@ -148,25 +152,36 @@ class DatabaseService {
     final db = await database;
     final tripCount =
         (Sqflite.firstIntValue(
-            await db.rawQuery('SELECT COUNT(*) FROM trips')) ??
-            0);
+          await db.rawQuery('SELECT COUNT(*) FROM trips'),
+        ) ??
+        0);
     final totalPoints =
         (Sqflite.firstIntValue(
-            await db.rawQuery('SELECT COUNT(*) FROM gps_points')) ??
-            0);
+          await db.rawQuery('SELECT COUNT(*) FROM gps_points'),
+        ) ??
+        0);
     final totalDistance =
-        (Sqflite.firstDoubleValue(await db.rawQuery(
-                'SELECT COALESCE(SUM(total_distance), 0) FROM trips')) ??
-            0.0);
-    final maxSpeed = (Sqflite.firstDoubleValue(await db.rawQuery(
-                'SELECT COALESCE(MAX(max_speed), 0) FROM trips')) ??
-            0.0);
+        (Sqflite.firstDoubleValue(
+          await db.rawQuery(
+            'SELECT COALESCE(SUM(total_distance), 0) FROM trips',
+          ),
+        ) ??
+        0.0);
+    final maxSpeed =
+        (Sqflite.firstDoubleValue(
+          await db.rawQuery('SELECT COALESCE(MAX(max_speed), 0) FROM trips'),
+        ) ??
+        0.0);
     final todayStr = DateTime.now().millisecondsSinceEpoch.toString();
-    final todayTrips = (Sqflite.firstIntValue(await db.rawQuery(
-            'SELECT COUNT(*) FROM trips WHERE start_time >= ?',
-            [DateTime.now()
-                .subtract(const Duration(hours: 24))
-                .millisecondsSinceEpoch])) ??
+    final todayTrips =
+        (Sqflite.firstIntValue(
+          await db
+              .rawQuery('SELECT COUNT(*) FROM trips WHERE start_time >= ?', [
+                DateTime.now()
+                    .subtract(const Duration(hours: 24))
+                    .millisecondsSinceEpoch,
+              ]),
+        ) ??
         0);
 
     return {
@@ -185,12 +200,15 @@ class DatabaseService {
 
     final buffer = StringBuffer();
     buffer.writeln('Trip: ${trip['name']}');
-    buffer.writeln('Date: ${DateTime.fromMillisecondsSinceEpoch(trip['start_time'] as int)}');
+    buffer.writeln(
+      'Date: ${DateTime.fromMillisecondsSinceEpoch(trip['start_time'] as int)}',
+    );
     buffer.writeln('');
     buffer.writeln('Latitude,Longitude,Altitude,Speed,Satellites,Timestamp');
     for (final p in points) {
       buffer.writeln(
-          '${p.latitude},${p.longitude},${p.altitude},${p.speed},${p.satellites},${p.timestamp.toIso8601String()}');
+        '${p.latitude},${p.longitude},${p.altitude},${p.speed},${p.satellites},${p.timestamp.toIso8601String()}',
+      );
     }
     return buffer.toString();
   }
@@ -202,11 +220,13 @@ class DatabaseService {
       final points = await getTripPoints(trip['id'] as int);
       buffer.writeln('Trip: ${trip['name']}');
       buffer.writeln(
-          'Start: ${DateTime.fromMillisecondsSinceEpoch(trip['start_time'] as int)}');
+        'Start: ${DateTime.fromMillisecondsSinceEpoch(trip['start_time'] as int)}',
+      );
       buffer.writeln('Latitude,Longitude,Altitude,Speed,Satellites,Timestamp');
       for (final p in points) {
         buffer.writeln(
-            '${p.latitude},${p.longitude},${p.altitude},${p.speed},${p.satellites},${p.timestamp.toIso8601String()}');
+          '${p.latitude},${p.longitude},${p.altitude},${p.speed},${p.satellites},${p.timestamp.toIso8601String()}',
+        );
       }
       buffer.writeln('');
     }
@@ -255,11 +275,16 @@ class DatabaseService {
   }
 
   double _calculateDistance(
-      double lat1, double lon1, double lat2, double lon2) {
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const R = 6371000;
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_toRadians(lat1)) *
             math.cos(_toRadians(lat2)) *
             math.sin(dLon / 2) *

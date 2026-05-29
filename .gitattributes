@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.ino text eol=lf
+*.dart text eol=lf
+*.yaml text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+*.gitignore text eol=lf
+*.png binary
+*.jpg binary

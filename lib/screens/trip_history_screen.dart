@@ -77,7 +77,10 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
         title: Text(
           'TRIP HISTORY',
           style: GoogleFonts.orbitron(
-              fontSize: 14, letterSpacing: 3, fontWeight: FontWeight.w600),
+            fontSize: 14,
+            letterSpacing: 3,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: true,
         leading: GestureDetector(
@@ -88,8 +91,11 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
               color: Colors.white10,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.arrow_back_ios_new,
-                size: 16, color: Colors.white),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 16,
+              color: Colors.white,
+            ),
           ),
         ),
         actions: [
@@ -108,162 +114,182 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF00E5FF)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF00E5FF)),
+            )
           : _trips.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.route, size: 64, color: Colors.white24),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No saved trips yet',
-                        style: GoogleFonts.spaceGrotesk(
-                            color: Colors.white38, fontSize: 16),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Record a trip from the home screen',
-                        style: GoogleFonts.spaceGrotesk(
-                            color: Colors.white24, fontSize: 13),
-                      ),
-                    ],
-                  ).animate().fadeIn(),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _trips.length,
-                  itemBuilder: (ctx, i) {
-                    final trip = _trips[i];
-                    final id = trip['id'] as int;
-                    final name = trip['name'] as String;
-                    final start = DateTime.fromMillisecondsSinceEpoch(
-                        trip['start_time'] as int);
-                    final end = trip['end_time'] != null
-                        ? DateTime.fromMillisecondsSinceEpoch(
-                            trip['end_time'] as int)
-                        : null;
-                    final dist = (trip['total_distance'] as num?)?.toDouble() ?? 0;
-                    final pts = trip['point_count'] as int? ?? 0;
-                    final maxSpd = (trip['max_speed'] as num?)?.toDouble() ?? 0;
-                    final color = _tripColor(i);
-                    final isSelected = _selectedTripId == id;
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.route, size: 64, color: Colors.white24),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No saved trips yet',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: Colors.white38,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Record a trip from the home screen',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: Colors.white24,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ).animate().fadeIn(),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _trips.length,
+              itemBuilder: (ctx, i) {
+                final trip = _trips[i];
+                final id = trip['id'] as int;
+                final name = trip['name'] as String;
+                final start = DateTime.fromMillisecondsSinceEpoch(
+                  trip['start_time'] as int,
+                  isUtc: true,
+                ).toLocal();
+                final end = trip['end_time'] != null
+                    ? DateTime.fromMillisecondsSinceEpoch(
+                        trip['end_time'] as int,
+                        isUtc: true,
+                      ).toLocal()
+                    : null;
+                final dist = (trip['total_distance'] as num?)?.toDouble() ?? 0;
+                final pts = trip['point_count'] as int? ?? 0;
+                final maxSpd = (trip['max_speed'] as num?)?.toDouble() ?? 0;
+                final color = _tripColor(i);
+                final isSelected = _selectedTripId == id;
 
-                    return Column(
-                      children: [
-                        GestureDetector(
-                          onTap: () => _selectTrip(id),
-                          onLongPress: () => _confirmDelete(id, name),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0D1B2A),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected ? color : Colors.white10,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                return Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _selectTrip(id),
+                      onLongPress: () => _confirmDelete(id, name),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0D1B2A),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? color : Colors.white10,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 4,
-                                      height: 24,
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        borderRadius:
-                                            BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        name,
-                                        style: GoogleFonts.spaceGrotesk(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => _export.exportTrip(context, id),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: color.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Icon(Icons.share,
-                                            color: color, size: 16),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    GestureDetector(
-                                      onTap: () => _confirmDelete(id, name),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(Icons.delete_outline,
-                                            color: Colors.red, size: 16),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    _infoChip(
-                                        Icons.calendar_today,
-                                        DateFormat('MMM dd, HH:mm')
-                                            .format(start)),
-                                    const SizedBox(width: 8),
-                                    _infoChip(
-                                        Icons.location_on, '$pts pts'),
-                                    const SizedBox(width: 8),
-                                    _infoChip(Icons.speed,
-                                        '${maxSpd.toStringAsFixed(1)} km/h'),
-                                  ],
-                                ),
-                                if (end != null) ...[
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      _infoChip(
-                                          Icons.timer,
-                                          _formatDuration(
-                                              end.difference(start))),
-                                      const SizedBox(width: 8),
-                                      _infoChip(Icons.satellite_alt,
-                                          '${end != null ? 'Completed' : 'Ongoing'}'),
-                                    ],
+                                Container(
+                                  width: 4,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(2),
                                   ),
-                                ],
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: GoogleFonts.spaceGrotesk(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _export.exportTrip(context, id),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: color.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.share,
+                                      color: color,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => _confirmDelete(id, name),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.red,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
-                          ).animate().fadeIn(),
-                        ),
-                        if (isSelected && _selectedPoints != null) ...[
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 200,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: _buildMiniMap(_selectedPoints!),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                _infoChip(
+                                  Icons.calendar_today,
+                                  DateFormat('MMM dd, HH:mm').format(start),
+                                ),
+                                const SizedBox(width: 8),
+                                _infoChip(Icons.location_on, '$pts pts'),
+                                const SizedBox(width: 8),
+                                _infoChip(
+                                  Icons.speed,
+                                  '${maxSpd.toStringAsFixed(1)} km/h',
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                        const SizedBox(height: 10),
-                      ],
-                    );
-                  },
-                ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                _infoChip(
+                                  Icons.timer,
+                                  _formatDuration(
+                                    end != null
+                                        ? end.difference(start)
+                                        : DateTime.now().difference(start),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _infoChip(
+                                  Icons.satellite_alt,
+                                  end != null ? 'Completed' : 'Ongoing',
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(),
+                    ),
+                    if (isSelected && _selectedPoints != null) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 200,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: _buildMiniMap(_selectedPoints!),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                  ],
+                );
+              },
+            ),
     );
   }
 
@@ -281,8 +307,10 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
           const SizedBox(width: 4),
           Text(
             text,
-            style:
-                GoogleFonts.spaceGrotesk(color: Colors.white54, fontSize: 11),
+            style: GoogleFonts.spaceGrotesk(
+              color: Colors.white54,
+              fontSize: 11,
+            ),
           ),
         ],
       ),
@@ -294,8 +322,7 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
     if (points.length == 1) {
       return FlutterMap(
         options: MapOptions(
-          initialCenter:
-              LatLng(points.first.latitude, points.first.longitude),
+          initialCenter: LatLng(points.first.latitude, points.first.longitude),
           initialZoom: 16,
         ),
         children: [
@@ -353,7 +380,10 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
         title: Text(
           'Delete Trip',
           style: GoogleFonts.orbitron(
-              color: Colors.white, fontSize: 14, letterSpacing: 1),
+            color: Colors.white,
+            fontSize: 14,
+            letterSpacing: 1,
+          ),
         ),
         content: Text(
           'Delete "$name"?',
@@ -362,17 +392,23 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: GoogleFonts.spaceGrotesk(color: Colors.white54)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.spaceGrotesk(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               _deleteTrip(id);
             },
-            child: Text('Delete',
-                style: GoogleFonts.spaceGrotesk(
-                    color: Colors.red, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.spaceGrotesk(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

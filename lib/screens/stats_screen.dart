@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate.dart/flutter_animate.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import '../services/database_service.dart';
@@ -40,7 +40,10 @@ class _StatsScreenState extends State<StatsScreen> {
         title: Text(
           'STATISTICS',
           style: GoogleFonts.orbitron(
-              fontSize: 14, letterSpacing: 3, fontWeight: FontWeight.w600),
+            fontSize: 14,
+            letterSpacing: 3,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: true,
         leading: GestureDetector(
@@ -51,14 +54,18 @@ class _StatsScreenState extends State<StatsScreen> {
               color: Colors.white10,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.arrow_back_ios_new,
-                size: 16, color: Colors.white),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 16,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
       body: _loading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF00E5FF)))
+              child: CircularProgressIndicator(color: Color(0xFF00E5FF)),
+            )
           : RefreshIndicator(
               onRefresh: _loadStats,
               color: const Color(0xFF00E5FF),
@@ -74,36 +81,44 @@ class _StatsScreenState extends State<StatsScreen> {
                     Row(
                       children: [
                         Expanded(
-                            child: _statCard(
-                                Icons.route,
-                                'Trips',
-                                '${_stats['tripCount']}',
-                                const Color(0xFF00E5FF))),
+                          child: _statCard(
+                            Icons.route,
+                            'Trips',
+                            '${_stats['tripCount']}',
+                            const Color(0xFF00E5FF),
+                          ),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
-                            child: _statCard(
-                                Icons.satellite_alt,
-                                'GPS Points',
-                                '${_stats['totalPoints']}',
-                                const Color(0xFF00FF9C))),
+                          child: _statCard(
+                            Icons.satellite_alt,
+                            'GPS Points',
+                            '${_stats['totalPoints']}',
+                            const Color(0xFF00FF9C),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
-                            child: _statCard(
-                                Icons.map,
-                                'Total Distance',
-                                '${(_stats['totalDistance'] as num).toStringAsFixed(2)} km',
-                                const Color(0xFFFFD600))),
+                          child: _statCard(
+                            Icons.map,
+                            'Total Distance',
+                            '${(_stats['totalDistance'] as num).toStringAsFixed(2)} km',
+                            const Color(0xFFFFD600),
+                          ),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
-                            child: _statCard(
-                                Icons.speed,
-                                'Max Speed',
-                                '${(_stats['maxSpeed'] as num).toStringAsFixed(1)} km/h',
-                                const Color(0xFFFF6B6B))),
+                          child: _statCard(
+                            Icons.speed,
+                            'Max Speed',
+                            '${(_stats['maxSpeed'] as num).toStringAsFixed(1)} km/h',
+                            const Color(0xFFFF6B6B),
+                          ),
+                        ),
                       ],
                     ),
 
@@ -129,14 +144,14 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Widget _sectionTitle(String text) => Text(
-        text,
-        style: GoogleFonts.orbitron(
-          fontSize: 10,
-          letterSpacing: 3,
-          color: const Color(0xFF00E5FF),
-          fontWeight: FontWeight.w600,
-        ),
-      );
+    text,
+    style: GoogleFonts.orbitron(
+      fontSize: 10,
+      letterSpacing: 3,
+      color: const Color(0xFF00E5FF),
+      fontWeight: FontWeight.w600,
+    ),
+  );
 
   Widget _statCard(IconData icon, String label, String value, Color color) {
     return Container(
@@ -209,14 +224,18 @@ class _StatsScreenState extends State<StatsScreen> {
                 Text(
                   'Today\'s Trips',
                   style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white, fontSize: 15,
-                      fontWeight: FontWeight.w600),
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '$today out of $total total trips recorded today',
                   style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white38, fontSize: 12),
+                    color: Colors.white38,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -241,8 +260,10 @@ class _StatsScreenState extends State<StatsScreen> {
           const Divider(color: Colors.white10, height: 20),
           _activityRow('Total GPS Points', '${_stats['totalPoints']}'),
           const Divider(color: Colors.white10, height: 20),
-          _activityRow('Avg Points/Trip',
-              '${_stats['tripCount'] > 0 ? (_stats['totalPoints'] / _stats['tripCount']).round() : 0}'),
+          _activityRow(
+            'Avg Points/Trip',
+            '${_stats['tripCount'] > 0 ? (_stats['totalPoints'] / _stats['tripCount']).round() : 0}',
+          ),
         ],
       ),
     );
@@ -292,14 +313,18 @@ class _StatsScreenState extends State<StatsScreen> {
                 Text(
                   'Database Size',
                   style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white, fontSize: 14,
-                      fontWeight: FontWeight.w600),
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '~${mb.toStringAsFixed(2)} MB estimated',
                   style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white38, fontSize: 12),
+                    color: Colors.white38,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

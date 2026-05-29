@@ -28,22 +28,25 @@ class GpsData {
       accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0.0,
       satellites: (json['satellites'] as int?) ?? 0,
       timestamp: json['timestamp'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch(
+              json['timestamp'] as int,
+              isUtc: true,
+            ).toLocal()
           : DateTime.now(),
       isValid: (json['valid'] as bool?) ?? true,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'lat': latitude,
-        'lng': longitude,
-        'alt': altitude,
-        'speed': speed,
-        'accuracy': accuracy,
-        'satellites': satellites,
-        'timestamp': timestamp.millisecondsSinceEpoch,
-        'valid': isValid,
-      };
+    'lat': latitude,
+    'lng': longitude,
+    'alt': altitude,
+    'speed': speed,
+    'accuracy': accuracy,
+    'satellites': satellites,
+    'timestamp': timestamp.millisecondsSinceEpoch,
+    'valid': isValid,
+  };
 
   GpsData copyWith({
     double? latitude,
@@ -100,7 +103,10 @@ class DeviceStatus {
       rssi: (json['rssi'] as int?) ?? 0,
       firmwareVersion: json['firmware'] as String? ?? '1.0.0',
       lastSeen: json['lastSeen'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['lastSeen'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch(
+              json['lastSeen'] as int,
+              isUtc: true,
+            ).toLocal()
           : DateTime.now(),
     );
   }

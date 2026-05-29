@@ -4,10 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../models/gps_data.dart';
 import '../services/esp32_service.dart';
-import '../services/database_service.dart';
 import '../services/trip_recorder.dart';
 import 'settings_screen.dart';
 import 'trip_history_screen.dart';
@@ -29,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   DeviceStatus? _deviceStatus;
   bool _isConnecting = false;
   bool _isFollowing = true;
-  final List<LatLng> _trackHistory = [];
+  final List<_TrackPoint> _trackHistory = [];
 
   StreamSubscription? _gpsSub;
   StreamSubscription? _statusSub;
@@ -59,7 +57,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         setState(() {
           _currentGps = gps;
           if (gps.isValid) {
-            final point = LatLng(gps.latitude, gps.longitude);
+            final point = _TrackPoint(
+              LatLng(gps.latitude, gps.longitude),
+              gps.speed,
+            );
             _trackHistory.add(point);
             if (_trackHistory.length > 500) _trackHistory.removeAt(0);
 
@@ -113,19 +114,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           SafeArea(child: _buildTopBar()),
 
           // BOTTOM INFO PANEL
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomPanel(),
-          ),
+          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomPanel()),
 
           // FAB cluster
-          Positioned(
-            right: 16,
-            bottom: 260,
-            child: _buildFabCluster(),
-          ),
+          Positioned(right: 16, bottom: 260, child: _buildFabCluster()),
         ],
       ),
     );
@@ -155,21 +147,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           userAgentPackageName: 'com.example.esp32_gps_tracker',
         ),
 
-        // Track polyline
+        // Speed-colored track polyline
         if (_trackHistory.length >= 2)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: _trackHistory,
-                color: const Color(0xFF00E5FF).withOpacity(0.6),
-                strokeWidth: 3,
-                gradientColors: [
-                  const Color(0xFF00E5FF).withOpacity(0.2),
-                  const Color(0xFF00E5FF),
-                ],
-              ),
-            ],
-          ),
+          PolylineLayer(polylines: _buildSpeedPolylines()),
 
         // Accuracy circle
         if (_currentGps != null && _currentGps!.isValid)
@@ -207,8 +187,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: const Color(0xFF00E5FF)
-                                  .withOpacity(1 - pulse),
+                              color: const Color(
+                                0xFF00E5FF,
+                              ).withOpacity(1 - pulse),
                               width: 2,
                             ),
                           ),
@@ -219,8 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFF00E5FF),
-                            border:
-                                Border.all(color: Colors.white, width: 2.5),
+                            border: Border.all(color: Colors.white, width: 2.5),
                             boxShadow: [
                               BoxShadow(
                                 color: const Color(0xFF00E5FF).withOpacity(0.8),
@@ -274,8 +254,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         boxShadow: _esp32.isConnected
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFF00FF9C)
-                                      .withOpacity(0.7),
+                                  color: const Color(
+                                    0xFF00FF9C,
+                                  ).withOpacity(0.7),
                                   blurRadius: 6,
                                 ),
                               ]
@@ -316,7 +297,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) => SettingsScreen(esp32Service: _esp32)),
+                builder: (_) => SettingsScreen(esp32Service: _esp32),
+              ),
             ).then((_) => _connect()),
             child: Container(
               width: 46,
@@ -326,8 +308,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white10),
               ),
-              child: const Icon(Icons.settings_outlined,
-                  color: Colors.white70, size: 20),
+              child: const Icon(
+                Icons.settings_outlined,
+                color: Colors.white70,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -374,14 +359,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 color: const Color(0xFF00E5FF).withOpacity(0.06),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: const Color(0xFF00E5FF).withOpacity(0.2)),
+                  color: const Color(0xFF00E5FF).withOpacity(0.2),
+                ),
               ),
               child: Column(
                 children: [
                   Text(
                     'COORDINATES',
                     style: GoogleFonts.orbitron(
-                        fontSize: 9, color: Colors.white38, letterSpacing: 3),
+                      fontSize: 9,
+                      color: Colors.white38,
+                      letterSpacing: 3,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -408,7 +397,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'Waiting for GPS signal...',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.spaceGrotesk(
-                    color: Colors.white38, fontSize: 13),
+                  color: Colors.white38,
+                  fontSize: 13,
+                ),
               ),
             ),
 
@@ -446,13 +437,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           if (_deviceStatus != null)
             Row(
               children: [
-                Icon(_deviceStatus!.batteryIcon,
-                    color: Colors.white54, size: 16),
+                Icon(
+                  _deviceStatus!.batteryIcon,
+                  color: Colors.white54,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Battery ${_deviceStatus!.batteryPercent}',
                   style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12, color: Colors.white54),
+                    fontSize: 12,
+                    color: Colors.white54,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Icon(Icons.wifi, color: Colors.white54, size: 16),
@@ -460,7 +456,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Text(
                   'Signal: ${_deviceStatus!.signalStrength}',
                   style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12, color: Colors.white54),
+                    fontSize: 12,
+                    color: Colors.white54,
+                  ),
                 ),
                 const Spacer(),
                 Container(
@@ -538,9 +536,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Follow toggle
         _mapFab(
           icon: _isFollowing ? Icons.gps_fixed : Icons.gps_not_fixed,
-          color: _isFollowing
-              ? const Color(0xFF00E5FF)
-              : Colors.white54,
+          color: _isFollowing ? const Color(0xFF00E5FF) : Colors.white54,
           onTap: () {
             setState(() => _isFollowing = !_isFollowing);
             if (_isFollowing && _currentGps != null) {
@@ -556,9 +552,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Record trip
         _mapFab(
           icon: _recorder.isRecording ? Icons.stop : Icons.fiber_manual_record,
-          color: _recorder.isRecording
-              ? Colors.red
-              : const Color(0xFF00FF9C),
+          color: _recorder.isRecording ? Colors.red : const Color(0xFF00FF9C),
           onTap: () {
             if (_recorder.isRecording) {
               _recorder.stopRecording();
@@ -632,4 +626,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
+
+  List<Polyline> _buildSpeedPolylines() {
+    if (_trackHistory.length < 2) return [];
+
+    final List<Polyline> segments = [];
+    for (int i = 0; i < _trackHistory.length - 1; i++) {
+      final speed = _trackHistory[i].speed;
+      final color = speed <= 5
+          ? const Color(0xFF00E5FF).withOpacity(0.3)
+          : speed <= 20
+          ? const Color(0xFF00E5FF).withOpacity(0.55)
+          : speed <= 40
+          ? const Color(0xFFFFD600).withOpacity(0.65)
+          : speed <= 60
+          ? const Color(0xFFFF8C00).withOpacity(0.75)
+          : Colors.red.withOpacity(0.85);
+      segments.add(
+        Polyline(
+          points: [_trackHistory[i].latlng, _trackHistory[i + 1].latlng],
+          color: color,
+          strokeWidth: 3,
+        ),
+      );
+    }
+    return segments;
+  }
+}
+
+class _TrackPoint {
+  final LatLng latlng;
+  final double speed;
+  const _TrackPoint(this.latlng, this.speed);
 }
