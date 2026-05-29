@@ -1,7 +1,8 @@
 /*
- * ESP32 GPS Tracker Firmware v1.1.0
+ * ESP32 GPS Tracker Firmware v1.2.0
  * Module: NEO-6M GPS + ESP32 DevKit
- * Features: WiFi AP/STA, WebSocket Server, HTTP REST API, Auto-reconnect
+ * Features: WiFi AP/STA, WebSocket Server, HTTP REST API, Health Endpoint,
+ *           API Key Auth, Config-driven WiFi, Exponential Backoff Reconnect
  *
  * Required Libraries (install via Arduino Library Manager):
  *   - TinyGPS++ by Mikal Hart
@@ -20,12 +21,18 @@
 #include <HardwareSerial.h>
 
 // ─── WiFi Config ──────────────────────────────────────────────────────────────
-const char* STA_SSID     = "YOUR_WIFI_SSID";
-const char* STA_PASSWORD = "YOUR_WIFI_PASSWORD";
-bool USE_STA_MODE = true;
-
-const char* AP_SSID     = "ESP32-GPS-Tracker";
-const char* AP_PASSWORD = "tracker123";
+// Load credentials from config.h (copy from config.example.h).
+// If config.h is missing, fallback values are used.
+#if __has_include("config.h")
+  #include "config.h"
+#else
+  #define USE_STA_MODE true
+  #define STA_SSID     "YOUR_WIFI_SSID"
+  #define STA_PASSWORD "YOUR_WIFI_PASSWORD"
+  #define AP_SSID     "ESP32-GPS-Tracker"
+  #define AP_PASSWORD "tracker123"
+  #define API_KEY     ""
+#endif
 
 // ─── GPS Config ───────────────────────────────────────────────────────────────
 #define GPS_RX_PIN  16
@@ -48,10 +55,14 @@ WebSocketsServer wsServer(81);
 unsigned long lastBroadcast = 0;
 unsigned long lastGpsFix    = 0;
 unsigned long lastWiFiCheck = 0;
+unsigned long lastHealthPing = 0;
 const unsigned long BROADCAST_INTERVAL = 1000;
 const unsigned long WIFI_CHECK_INTERVAL = 30000;
 const unsigned long WDT_TIMEOUT = 120000;
+const unsigned long HEALTH_CHECK_INTERVAL = 60000;
 int wifiReconnectAttempts = 0;
+unsigned long httpRequestCount = 0;
+unsigned long wsMessageCount = 0;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 float getBatteryLevel() {
@@ -183,12 +194,50 @@ void checkWatchdog() {
   }
 }
 
+// ─── API Key Validation ────────────────────────────────────────────────────────
+bool apiKeyValid() {
+  if (strlen(API_KEY) == 0) return true;
+  if (!httpServer.hasHeader("X-API-Key")) return false;
+  return httpServer.header("X-API-Key") == String(API_KEY);
+}
+
+void requireAuth() {
+  if (!apiKeyValid()) {
+    httpServer.send(401, "application/json", "{\"error\":\"unauthorized\"}");
+  }
+}
+
 // ─── HTTP Handlers ────────────────────────────────────────────────────────────
 void handlePing() {
-  httpServer.send(200, "application/json", "{\"status\":\"ok\",\"firmware\":\"1.1.0\"}");
+  httpRequestCount++;
+  httpServer.send(200, "application/json", "{\"status\":\"ok\",\"firmware\":\"1.2.0\"}");
+}
+
+void handleHealth() {
+  httpRequestCount++;
+  StaticJsonDocument<300> doc;
+  doc["status"]      = "healthy";
+  doc["firmware"]    = "1.2.0";
+  doc["uptime"]      = millis() / 1000;
+  doc["freeHeap"]    = ESP.getFreeHeap();
+  doc["wifiMode"]    = WiFi.getMode() == WIFI_AP ? "AP" : "STA";
+  doc["wifiRssi"]    = WiFi.RSSI();
+  doc["gpsValid"]    = gps.location.isValid();
+  doc["gpsSats"]     = gps.satellites.isValid() ? (int)gps.satellites.value() : 0;
+  doc["httpCount"]   = httpRequestCount;
+  doc["wsCount"]     = wsMessageCount;
+  doc["clients"]     = wsServer.connectedClientsCount();
+  doc["battery"]     = getBatteryLevel();
+  doc["lastGpsFixMs"] = millis() - lastGpsFix;
+
+  String response;
+  serializeJson(doc, response);
+  httpServer.send(200, "application/json", response);
 }
 
 void handleGps() {
+  httpRequestCount++;
+  if (!apiKeyValid()) { requireAuth(); return; }
   StaticJsonDocument<200> doc;
   doc["lat"]        = gps.location.isValid() ? gps.location.lat()       : 0.0;
   doc["lng"]        = gps.location.isValid() ? gps.location.lng()       : 0.0;
@@ -205,12 +254,14 @@ void handleGps() {
 }
 
 void handleStatus() {
+  httpRequestCount++;
+  if (!apiKeyValid()) { requireAuth(); return; }
   StaticJsonDocument<200> doc;
   doc["connected"] = true;
   doc["battery"]   = getBatteryLevel();
   doc["ip"]        = WiFi.getMode() == WIFI_AP ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
   doc["rssi"]      = WiFi.RSSI();
-  doc["firmware"]  = "1.1.0";
+  doc["firmware"]  = "1.2.0";
   doc["uptime"]    = millis() / 1000;
   doc["lastSeen"]  = millis();
 
@@ -222,7 +273,7 @@ void handleStatus() {
 void handleCors() {
   httpServer.sendHeader("Access-Control-Allow-Origin", "*");
   httpServer.sendHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  httpServer.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+  httpServer.sendHeader("Access-Control-Allow-Headers", "Content-Type, X-API-Key");
   httpServer.send(204);
 }
 
@@ -252,7 +303,7 @@ void onWsEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {
 // ─── Setup ────────────────────────────────────────────────────────────────────
 void setup() {
   Serial.begin(115200);
-  Serial.println("\n=== ESP32 GPS Tracker v1.1.0 ===");
+  Serial.println("\n=== ESP32 GPS Tracker v1.2.0 ===");
 
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
   Serial.println("[GPS] Serial started on UART2");
@@ -260,6 +311,7 @@ void setup() {
   setupWiFi();
 
   httpServer.on("/ping",    HTTP_GET,     handlePing);
+  httpServer.on("/health",  HTTP_GET,     handleHealth);
   httpServer.on("/gps",     HTTP_GET,     handleGps);
   httpServer.on("/status",  HTTP_GET,     handleStatus);
   httpServer.on("/",        HTTP_OPTIONS, handleCors);
@@ -285,6 +337,15 @@ void loop() {
 
   checkWiFi();
   checkWatchdog();
+
+  // Periodic health log
+  if (now - lastHealthPing >= HEALTH_CHECK_INTERVAL) {
+    lastHealthPing = now;
+    Serial.printf("[HEALTH] Uptime: %lus | Free heap: %u | WiFi: %s | Clients: %u\n",
+      now / 1000, ESP.getFreeHeap(),
+      WiFi.getMode() == WIFI_AP ? "AP" : "STA",
+      wsServer.connectedClientsCount());
+  }
 
   unsigned long now = millis();
   if (now - lastBroadcast >= BROADCAST_INTERVAL) {

@@ -85,6 +85,7 @@ class DeviceStatus {
   final int rssi; // WiFi signal strength
   final String firmwareVersion;
   final DateTime lastSeen;
+  final String? uptime; // human-readable uptime, e.g. "2h 15m"
 
   const DeviceStatus({
     required this.isConnected,
@@ -93,9 +94,20 @@ class DeviceStatus {
     this.rssi = 0,
     this.firmwareVersion = '1.0.0',
     required this.lastSeen,
+    this.uptime,
   });
 
   factory DeviceStatus.fromJson(Map<String, dynamic> json) {
+    final raw = (json['uptime'] as num?)?.toInt() ?? 0;
+    final h = raw ~/ 3600;
+    final m = (raw % 3600) ~/ 60;
+    final s = raw % 60;
+    final uptimeStr = h > 0
+        ? '${h}h ${m}m'
+        : m > 0
+            ? '${m}m ${s}s'
+            : '${s}s';
+
     return DeviceStatus(
       isConnected: (json['connected'] as bool?) ?? false,
       batteryLevel: (json['battery'] as num?)?.toDouble() ?? 0.0,
@@ -108,6 +120,7 @@ class DeviceStatus {
               isUtc: true,
             ).toLocal()
           : DateTime.now(),
+      uptime: raw > 0 ? uptimeStr : null,
     );
   }
 

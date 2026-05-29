@@ -216,6 +216,55 @@ git push
 
 ---
 
+---
+
+## 🚀 Deployment
+
+### Flutter Web — CI/CD Pipeline
+
+A **GitHub Actions** workflow (`.github/workflows/flutter_ci.yml`) automatically builds and deploys the Flutter web app to **GitHub Pages** on every push to `main`:
+
+1. **Analyze** — runs `flutter analyze` for code quality
+2. **Build Web** — builds the release web bundle
+3. **Deploy** — publishes to GitHub Pages
+
+> Enable GitHub Pages in your repo: **Settings → Pages → Deploy from branch (gh-pages)**
+
+### Other Hosting Options
+
+Use the provided deploy scripts:
+
+```bash
+# Build only
+./scripts/deploy_web.sh
+
+# Deploy to specific host
+./scripts/deploy_web.sh --host firebase
+./scripts/deploy_web.sh --host netlify
+./scripts/deploy_web.sh --host vercel
+```
+
+### Docker Deployment
+
+```bash
+# Build & run with Docker Compose
+docker-compose up -d
+# App available at http://localhost:8080
+```
+
+### ESP32 Firmware — Environment Config
+
+WiFi credentials are no longer hardcoded. Use the config template:
+
+```bash
+cp firmware/config.example.h firmware/config.h
+# Edit firmware/config.h with your WiFi credentials
+```
+
+> `config.h` is gitignored — your secrets stay local.
+
+---
+
 ## 📁 Project Structure
 
 ```

@@ -1,0 +1,23 @@
+# ─── ESP32 GPS Tracker — Docker Compose ───────────────────────────────────────
+# Start the Flutter web app behind an Nginx reverse proxy.
+#
+# Usage:
+#   docker-compose up -d        # Start in background
+#   docker-compose down         # Stop
+#   docker-compose logs -f      # Follow logs
+#
+# The web app will be available at http://localhost:8080
+
+version: "3.8"
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

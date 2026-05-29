@@ -1,0 +1,49 @@
+name: Firmware Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firmware/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'firmware/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate firmware file structure
+        run: |
+          errors=0
+          if [ ! -f firmware/esp32_gps_tracker.ino ]; then
+            echo "::error::Missing firmware/esp32_gps_tracker.ino"
+            errors=$((errors+1))
+          fi
+          if [ ! -f firmware/config.example.h ]; then
+            echo "::error::Missing firmware/config.example.h"
+            errors=$((errors+1))
+          fi
+          if [ "$errors" -gt 0 ]; then
+            exit 1
+          fi
+          echo "Firmware structure OK"
+
+      - name: Check config.example.h placeholders
+        run: |
+          if grep -q "YOUR_WIFI_SSID" firmware/config.example.h; then
+            echo "config.example.h has proper placeholder values"
+          else
+            echo "::warning::config.example.h may be missing placeholder values"
+          fi
+
+      - name: Verify .ino includes config.h
+        run: |
+          if grep -q '#include "config.h"' firmware/esp32_gps_tracker.ino; then
+            echo "firmware correctly includes config.h"
+          else
+            echo "::warning::firmware does not include config.h"
+          fi

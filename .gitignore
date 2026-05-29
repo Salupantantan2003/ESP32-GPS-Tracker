@@ -58,3 +58,6 @@ Thumbs.db
 .env
 *.env
 secrets.dart
+
+# Firmware config
+firmware/config.h

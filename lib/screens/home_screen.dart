@@ -11,6 +11,14 @@ import 'settings_screen.dart';
 import 'trip_history_screen.dart';
 import 'stats_screen.dart';
 
+const Map<ConnectionQuality, String> ConnectionQualityLabel = {
+  ConnectionQuality.excellent: 'Excellent connection',
+  ConnectionQuality.good: 'Good connection',
+  ConnectionQuality.fair: 'Fair connection',
+  ConnectionQuality.poor: 'Poor connection',
+  ConnectionQuality.disconnected: 'Disconnected',
+};
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -75,6 +83,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _statusSub = _esp32.statusStream?.listen((status) {
       if (mounted) setState(() => _deviceStatus = status);
     });
+  }
+
+  Color _connectionQualityColor(ConnectionQuality q) {
+    switch (q) {
+      case ConnectionQuality.excellent:
+        return const Color(0xFF00FF9C);
+      case ConnectionQuality.good:
+        return const Color(0xFF00E5FF);
+      case ConnectionQuality.fair:
+        return const Color(0xFFFFD600);
+      case ConnectionQuality.poor:
+        return Colors.orange;
+      case ConnectionQuality.disconnected:
+        return Colors.red;
+    }
   }
 
   Future<void> _connect() async {
@@ -433,53 +456,86 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
           const SizedBox(height: 14),
 
-          // Battery row
+          // Battery + Uptime + Connection Quality row
           if (_deviceStatus != null)
-            Row(
+            Column(
               children: [
-                Icon(
-                  _deviceStatus!.batteryIcon,
-                  color: Colors.white54,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Battery ${_deviceStatus!.batteryPercent}',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    color: Colors.white54,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.wifi, color: Colors.white54, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Signal: ${_deviceStatus!.signalStrength}',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    color: Colors.white54,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  width: 100,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    color: Colors.white10,
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _deviceStatus!.batteryLevel,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: _deviceStatus!.batteryLevel > 0.3
-                            ? const Color(0xFF00FF9C)
-                            : Colors.red,
+                Row(
+                  children: [
+                    Icon(
+                      _deviceStatus!.batteryIcon,
+                      color: Colors.white54,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Battery ${_deviceStatus!.batteryPercent}',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        color: Colors.white54,
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    Icon(Icons.wifi, color: Colors.white54, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Signal: ${_deviceStatus!.signalStrength}',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        color: Colors.white54,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 100,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: Colors.white10,
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: _deviceStatus!.batteryLevel,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(2),
+                            color: _deviceStatus!.batteryLevel > 0.3
+                                ? const Color(0xFF00FF9C)
+                                : Colors.red,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.monitor_heart, color: Colors.white38, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      ConnectionQualityLabel[_esp32.connectionQuality]!,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        color: _connectionQualityColor(_esp32.connectionQuality),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    if (_deviceStatus!.uptime != null)
+                      Row(
+                        children: [
+                          Icon(Icons.timer_outlined, color: Colors.white38, size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Uptime: ${_deviceStatus!.uptime}',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              color: Colors.white38,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
               ],
             ),
